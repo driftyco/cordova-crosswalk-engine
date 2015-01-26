@@ -81,9 +81,6 @@ public class XWalkCordovaWebView implements CordovaWebView {
     // Flag to track that a loadUrl timeout occurred
     int loadUrlTimeout = 0;
 
-    // Callback for file picker dialog
-    protected ValueCallback<Uri> mUploadMessage;
-
     CordovaBridge bridge;
     
     /** custom view created by the browser (a video player for example) */
@@ -604,14 +601,7 @@ public class XWalkCordovaWebView implements CordovaWebView {
     public CordovaPreferences getPreferences() {
         return preferences;
     }
-
-    public void onFilePickerResult(Uri uri) {
-        if (null == mUploadMessage)
-            return;
-        mUploadMessage.onReceiveValue(uri);
-        mUploadMessage = null;
-    }
-
+    
     @Override
     public Object postMessage(String id, Object data) {
         return pluginManager.postMessage(id, data);
