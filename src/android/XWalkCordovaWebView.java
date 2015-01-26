@@ -605,7 +605,6 @@ public class XWalkCordovaWebView implements CordovaWebView {
         return preferences;
     }
 
-    @Override
     public void onFilePickerResult(Uri uri) {
         if (null == mUploadMessage)
             return;
