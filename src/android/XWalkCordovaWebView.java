@@ -17,7 +17,7 @@
        under the License.
 */
 
-package org.apache.cordova.engine.crosswalk;
+package org.crosswalk.engine;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,6 +29,7 @@ import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPreferences;
 import org.apache.cordova.CordovaResourceApi;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.ICordovaCookieManager;
 import org.apache.cordova.LOG;
 import org.apache.cordova.NativeToJsMessageQueue;
 import org.apache.cordova.PluginEntry;
@@ -74,6 +75,7 @@ public class XWalkCordovaWebView implements CordovaWebView {
     private PluginManager pluginManager;
     private BroadcastReceiver receiver;
     protected XWalkCordovaView webview;
+    protected XWalkCordovaCookieManager cookieManager;
 
     /** Activities and other important classes **/
     CordovaInterface cordova;
@@ -106,6 +108,8 @@ public class XWalkCordovaWebView implements CordovaWebView {
 
     public XWalkCordovaWebView(XWalkCordovaView webView) {
         this.webview = webView;
+
+        this.cookieManager = new XWalkCordovaCookieManager();
     }
 
     // Use two-phase init so that the control will work with XML layouts.
@@ -129,6 +133,10 @@ public class XWalkCordovaWebView implements CordovaWebView {
 
         webview.init(this);
         exposeJsInterface();
+
+        if (preferences.getBoolean("DisallowOverscroll", false)) {
+            webview.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -390,7 +398,7 @@ public class XWalkCordovaWebView implements CordovaWebView {
     }
 
     @Override
-    public void handleResume(boolean keepRunning, boolean activityResultKeepRunning)
+    public void handleResume(boolean keepRunning)
     {
         webview.evaluateJavascript("try{cordova.fireDocumentEvent('resume');}catch(e){console.log('exception firing resume event from native');};", null);
 
@@ -602,6 +610,11 @@ public class XWalkCordovaWebView implements CordovaWebView {
         return preferences;
     }
     
+    @Override
+    public ICordovaCookieManager getCookieManager() {
+        return cookieManager;
+    }
+
     @Override
     public Object postMessage(String id, Object data) {
         return pluginManager.postMessage(id, data);
