@@ -17,7 +17,7 @@
        under the License.
 */
 
-package org.apache.cordova.engine.crosswalk;
+package org.crosswalk.engine;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,6 +29,7 @@ import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPreferences;
 import org.apache.cordova.CordovaResourceApi;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.ICordovaCookieManager;
 import org.apache.cordova.LOG;
 import org.apache.cordova.NativeToJsMessageQueue;
 import org.apache.cordova.PluginEntry;
@@ -74,6 +75,7 @@ public class XWalkCordovaWebView implements CordovaWebView {
     private PluginManager pluginManager;
     private BroadcastReceiver receiver;
     protected XWalkCordovaView webview;
+    protected XWalkCordovaCookieManager cookieManager;
 
     /** Activities and other important classes **/
     CordovaInterface cordova;
@@ -106,11 +108,13 @@ public class XWalkCordovaWebView implements CordovaWebView {
 
     public XWalkCordovaWebView(XWalkCordovaView webView) {
         this.webview = webView;
+
+        this.cookieManager = new XWalkCordovaCookieManager();
     }
 
     // Use two-phase init so that the control will work with XML layouts.
     @Override
-    public void init(CordovaInterface cordova, List<PluginEntry> pluginEntries,
+    public void init(final CordovaInterface cordova, List<PluginEntry> pluginEntries,
             Whitelist internalWhitelist, Whitelist externalWhitelist,
             CordovaPreferences preferences) {
         if (this.cordova != null) {
@@ -123,12 +127,30 @@ public class XWalkCordovaWebView implements CordovaWebView {
 
         pluginManager = new PluginManager(this, this.cordova, pluginEntries);
         resourceApi = new CordovaResourceApi(webview.getContext(), pluginManager);
-        bridge = new CordovaBridge(pluginManager, new NativeToJsMessageQueue(this, cordova), this.cordova.getActivity().getPackageName());
+        NativeToJsMessageQueue nativeToJsMessageQueue = new NativeToJsMessageQueue();
+        nativeToJsMessageQueue.addBridgeMode(new NativeToJsMessageQueue.NoOpBridgeMode());
+        nativeToJsMessageQueue.addBridgeMode(new NativeToJsMessageQueue.LoadUrlBridgeMode(this, cordova));
+        nativeToJsMessageQueue.addBridgeMode(new NativeToJsMessageQueue.OnlineEventsBridgeMode(new NativeToJsMessageQueue.OnlineEventsBridgeMode.OnlineEventsBridgeModeDelegate() {
+            @Override
+            public void setNetworkAvailable(boolean value) {
+                XWalkCordovaWebView.this.setNetworkAvailable(value);
+            }
+
+            @Override
+            public void runOnUiThread(Runnable r) {
+                cordova.getActivity().runOnUiThread(r);
+            }
+        }));
+        bridge = new CordovaBridge(pluginManager, nativeToJsMessageQueue, this.cordova.getActivity().getPackageName());
         pluginManager.addService("CoreAndroid", "org.apache.cordova.CoreAndroid");
         initWebViewSettings();
 
         webview.init(this);
         exposeJsInterface();
+
+        if (preferences.getBoolean("DisallowOverscroll", false)) {
+            webview.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -390,7 +412,7 @@ public class XWalkCordovaWebView implements CordovaWebView {
     }
 
     @Override
-    public void handleResume(boolean keepRunning, boolean activityResultKeepRunning)
+    public void handleResume(boolean keepRunning)
     {
         webview.evaluateJavascript("try{cordova.fireDocumentEvent('resume');}catch(e){console.log('exception firing resume event from native');};", null);
 
@@ -602,6 +624,11 @@ public class XWalkCordovaWebView implements CordovaWebView {
         return preferences;
     }
     
+    @Override
+    public ICordovaCookieManager getCookieManager() {
+        return cookieManager;
+    }
+
     @Override
     public Object postMessage(String id, Object data) {
         return pluginManager.postMessage(id, data);
