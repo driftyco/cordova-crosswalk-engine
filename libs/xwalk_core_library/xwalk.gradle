@@ -8,7 +8,7 @@ if (cdvBuildMultipleApks == null) {
     ext.cdvBuildMultipleApks = true
 }
 if (cdvMinSdkVersion == null) {
-    ext.cdvMinSdkVersion = 14
+    ext.cdvMinSdkVersion = 10
 }
 
 dependencies {

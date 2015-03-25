@@ -1,7 +1,7 @@
 
 android {
     defaultConfig {
-        minSdkVersion 14
+        minSdkVersion 10
         targetSdkVersion 19
         ndk{
             moduleName "libxwalkcore"
